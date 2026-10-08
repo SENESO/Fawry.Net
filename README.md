@@ -3,6 +3,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![.NET](https://img.shields.io/badge/.NET-netstandard2.0%20%7C%20net8.0-512BD4)](https://dotnet.microsoft.com/)
 [![GitHub stars](https://img.shields.io/github/stars/SENESO/Fawry.Net)](https://github.com/SENESO/Fawry.Net/stargazers)
+[![NuGet](https://img.shields.io/nuget/v/Fawry.Net)](https://www.nuget.org/packages/Fawry.Net)
 [![CI](https://github.com/SENESO/Fawry.Net/actions/workflows/ci.yml/badge.svg)](https://github.com/SENESO/Fawry.Net/actions/workflows/ci.yml)
 
 # Fawry.Net
