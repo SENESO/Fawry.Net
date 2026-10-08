@@ -6,6 +6,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Fawry", "src\Fawry\Fawry.cs
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Fawry.Tests", "test\Fawry.Tests\Fawry.Tests.csproj", "{A1B2C3D4-7777-4222-8333-444455556666}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Fawry.IntegrationTests", "test\Fawry.IntegrationTests\Fawry.IntegrationTests.csproj", "{A1B2C3D4-8888-4222-8333-444455556666}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,5 +22,9 @@ Global
 		{A1B2C3D4-7777-4222-8333-444455556666}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1B2C3D4-7777-4222-8333-444455556666}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1B2C3D4-7777-4222-8333-444455556666}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-8888-4222-8333-444455556666}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-8888-4222-8333-444455556666}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-8888-4222-8333-444455556666}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-8888-4222-8333-444455556666}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal
