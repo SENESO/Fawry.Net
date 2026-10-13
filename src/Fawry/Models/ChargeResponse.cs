@@ -17,6 +17,21 @@ namespace Fawry.Models
         [JsonPropertyName("referenceNumber")]
         public string ReferenceNumber { get; set; }
 
+        /// <summary>
+        /// Fawry's order reference number in server-to-server notifications V2
+        /// (<c>fawryRefNumber</c>). Falls back to <see cref="ReferenceNumber"/>
+        /// when verifying V2 signatures.
+        /// </summary>
+        [JsonPropertyName("fawryRefNumber")]
+        public string FawryRefNumber { get; set; }
+
+        /// <summary>
+        /// Unique payment tracking number in Fawry's system (notification V2's
+        /// <c>paymentRefrenceNumber</c> — spelling per Fawry's docs).
+        /// </summary>
+        [JsonPropertyName("paymentRefrenceNumber")]
+        public string PaymentReferenceNumber { get; set; }
+
         /// <summary>Your merchant reference number (echoed back).</summary>
         [JsonPropertyName("merchantRefNumber")]
         public string MerchantRefNumber { get; set; }
@@ -69,8 +84,20 @@ namespace Fawry.Models
         [JsonPropertyName("signature")]
         public string Signature { get; set; }
 
-        /// <summary>Fawry status code: "200" means success.</summary>
+        /// <summary>
+        /// Server-to-server notification V2 signature (<c>messageSignature</c>).
+        /// When present, <see cref="FawrySignature.VerifyCallbackSignature"/> uses
+        /// Fawry's V2 recipe automatically.
+        /// </summary>
+        [JsonPropertyName("messageSignature")]
+        public string MessageSignature { get; set; }
+
+        /// <summary>
+        /// Fawry status code: "200" means success.
+        /// Sent as a string by some endpoints and a number by others — both parse.
+        /// </summary>
         [JsonPropertyName("statusCode")]
+        [JsonConverter(typeof(NumericStringConverter))]
         public string StatusCode { get; set; }
 
         /// <summary>Human-readable status description.</summary>

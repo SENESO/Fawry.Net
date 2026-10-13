@@ -29,8 +29,12 @@ namespace Fawry.Models
         [JsonPropertyName("orderStatus")]
         public string OrderStatus { get; set; }
 
-        /// <summary>Fawry status code: "200" means success.</summary>
+        /// <summary>
+        /// Fawry status code: "200" means success.
+        /// Sent as a string by some endpoints and a number by others — both parse.
+        /// </summary>
         [JsonPropertyName("statusCode")]
+        [JsonConverter(typeof(NumericStringConverter))]
         public string StatusCode { get; set; }
 
         /// <summary>Human-readable status description.</summary>

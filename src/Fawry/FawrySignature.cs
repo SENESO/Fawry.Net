@@ -87,6 +87,61 @@ namespace Fawry
             => Sha256Hex(merchantRefNum + merchantCode + secureKey);
 
         /// <summary>
+        /// Refund signature (Fawry's "Refund API" docs):
+        /// merchantCode + referenceNumber + refundAmount (2dp) + reason (or "") + secureKey
+        /// </summary>
+        public static string ComputeRefundSignature(
+            string merchantCode,
+            string referenceNumber,
+            decimal refundAmount,
+            string reason,
+            string secureKey)
+            => Sha256Hex((merchantCode ?? string.Empty) + (referenceNumber ?? string.Empty)
+                + FormatAmount(refundAmount) + (reason ?? string.Empty) + secureKey);
+
+        /// <summary>
+        /// V2 server-to-server notification signature
+        /// (Fawry's "Server To Server Notification V2" docs):
+        /// fawryRefNumber + merchantRefNumber + paymentAmount (2dp) + orderAmount (2dp)
+        /// + orderStatus + paymentMethod + paymentRefrenceNumber (or "") + secureKey
+        /// </summary>
+        public static string ComputeCallbackV2Signature(
+            string fawryRefNumber,
+            string merchantRefNumber,
+            decimal paymentAmount,
+            decimal orderAmount,
+            string orderStatus,
+            string paymentMethod,
+            string paymentReferenceNumber,
+            string secureKey)
+            => Sha256Hex((fawryRefNumber ?? string.Empty) + (merchantRefNumber ?? string.Empty)
+                + FormatAmount(paymentAmount) + FormatAmount(orderAmount)
+                + (orderStatus ?? string.Empty) + (paymentMethod ?? string.Empty)
+                + (paymentReferenceNumber ?? string.Empty) + secureKey);
+
+        /// <summary>
+        /// Verifies a V2 server-to-server notification using its <c>messageSignature</c>,
+        /// with constant-time comparison to avoid timing attacks.
+        /// </summary>
+        public static bool VerifyCallbackV2Signature(ChargeResponse response, string secureKey)
+        {
+            if (response == null) throw new ArgumentNullException(nameof(response));
+            if (string.IsNullOrEmpty(response.MessageSignature)) return false;
+
+            var expected = ComputeCallbackV2Signature(
+                response.FawryRefNumber ?? response.ReferenceNumber,
+                response.MerchantRefNumber,
+                response.PaymentAmount,
+                response.OrderAmount,
+                response.OrderStatus,
+                response.PaymentMethod,
+                response.PaymentReferenceNumber,
+                secureKey);
+
+            return FixedTimeEquals(expected, response.MessageSignature);
+        }
+
+        /// <summary>
         /// Verifies a charge response / payment callback using Fawry's recipe:
         /// referenceNumber (if present) + merchantRefNum + paymentAmount (2dp) + orderAmount (2dp)
         /// + orderStatus + paymentMethod + fawryFees (if present, 2dp) + shippingFees (if present, 2dp)
@@ -96,6 +151,12 @@ namespace Fawry
         public static bool VerifyCallbackSignature(ChargeResponse response, string secureKey)
         {
             if (response == null) throw new ArgumentNullException(nameof(response));
+
+            // Server-to-server notifications V2 carry messageSignature, computed
+            // with Fawry's V2 recipe — verify with that instead of the legacy one.
+            if (!string.IsNullOrEmpty(response.MessageSignature))
+                return VerifyCallbackV2Signature(response, secureKey);
+
             if (string.IsNullOrEmpty(response.Signature)) return false;
 
             var sb = new StringBuilder();

@@ -211,6 +211,102 @@ namespace Fawry.Tests
             }
         }
 
+        private const string RefundOkBody =
+            @"{ ""type"": ""ChargeResponse"", ""statusCode"": 200,
+               ""statusDescription"": ""Operation done successfully"" }";
+
+        private const string RefundErrorBody =
+            @"{ ""type"": ""ChargeResponse"", ""statusCode"": 9935,
+               ""statusDescription"": ""Refunded amount greater than paid amount."" }";
+
+        [Test]
+        public async Task Refund_PostsToRefundEndpoint_WithValidSignature()
+        {
+            var handler = new CapturingHandler(RefundOkBody);
+            var client = new FawryClient(Options(), new HttpClient(handler));
+
+            var response = await client.RefundAsync("23124654641", 362.50m, "Item not as described");
+
+            Assert.AreEqual(1, handler.Requests.Count);
+            Assert.IsTrue(handler.Requests[0].Url.EndsWith("/ECommerceWeb/Fawry/payments/refund"));
+
+            using (var doc = JsonDocument.Parse(handler.Requests[0].Body))
+            {
+                var root = doc.RootElement;
+                Assert.AreEqual(MerchantCode, root.GetProperty("merchantCode").GetString());
+                Assert.AreEqual("23124654641", root.GetProperty("referenceNumber").GetString());
+                Assert.AreEqual("362.50", root.GetProperty("refundAmount").GetString());
+                Assert.AreEqual("Item not as described", root.GetProperty("reason").GetString());
+
+                // The signature must match the documented recipe for the sent fields.
+                var expected = FawrySignature.ComputeRefundSignature(
+                    MerchantCode, "23124654641", 362.50m, "Item not as described", SecureKey);
+                Assert.AreEqual(expected, root.GetProperty("signature").GetString());
+            }
+
+            // Fawry sends statusCode as a JSON number; the SDK must still read it.
+            Assert.IsTrue(response.IsSuccess);
+            Assert.AreEqual("200", response.StatusCode);
+        }
+
+        [Test]
+        public async Task Refund_WithoutReason_OmitsReasonField()
+        {
+            var handler = new CapturingHandler(RefundOkBody);
+            var client = new FawryClient(Options(), new HttpClient(handler));
+
+            await client.RefundAsync("23124654641", 100.00m);
+
+            using (var doc = JsonDocument.Parse(handler.Requests[0].Body))
+            {
+                var root = doc.RootElement;
+                Assert.IsFalse(root.TryGetProperty("reason", out _));
+
+                var expected = FawrySignature.ComputeRefundSignature(
+                    MerchantCode, "23124654641", 100.00m, null, SecureKey);
+                Assert.AreEqual(expected, root.GetProperty("signature").GetString());
+            }
+        }
+
+        [Test]
+        public void Refund_ErrorStatusCode_ThrowsFawryApiException()
+        {
+            var handler = new CapturingHandler(RefundErrorBody);
+            var client = new FawryClient(Options(), new HttpClient(handler));
+
+            var ex = Assert.ThrowsAsync<FawryApiException>(
+                () => client.RefundAsync("23124654641", 9999.99m));
+            Assert.AreEqual("9935", ex.StatusCode);
+        }
+
+        [Test]
+        public void Refund_InvalidArguments_Throw()
+        {
+            var client = new FawryClient(Options(), new HttpClient(new CapturingHandler(RefundOkBody)));
+
+            Assert.ThrowsAsync<ArgumentException>(
+                () => client.RefundAsync("  ", 100.00m));
+            Assert.ThrowsAsync<ArgumentException>(
+                () => client.RefundAsync("23124654641", 0m));
+        }
+
+        [Test]
+        public async Task Charge_NumericStatusCode_ParsesAsSuccess()
+        {
+            // Fawry sometimes sends statusCode as a JSON number instead of a string.
+            const string numericBody =
+                @"{ ""type"": ""ChargeResponse"", ""referenceNumber"": ""963455678"",
+                   ""statusCode"": 200, ""statusDescription"": ""Operation done successfully"" }";
+
+            var handler = new CapturingHandler(numericBody);
+            var client = new FawryClient(Options(), new HttpClient(handler));
+
+            var response = await client.ChargePayAtFawryAsync(SampleRequest());
+
+            Assert.IsTrue(response.IsSuccess);
+            Assert.AreEqual("200", response.StatusCode);
+        }
+
         [Test]
         public void VerifyCallbackSignature_DelegatesToOptionsKey()
         {

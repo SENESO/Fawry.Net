@@ -14,7 +14,7 @@ namespace Fawry
     /// <summary>
     /// .NET client for FawryPay charge APIs: Pay-at-Fawry reference numbers,
     /// card payments (immediate or authorize-then-capture), mobile wallets,
-    /// plus capture / cancel-authorization and callback verification.
+    /// plus capture / cancel-authorization, refunds, and callback verification.
     /// Bring your own <see cref="HttpClient"/>; the client never disposes one you pass in.
     /// </summary>
     public class FawryClient : IDisposable
@@ -146,6 +146,41 @@ namespace Fawry
                 "ECommerceWeb/api/payment/cancel", body, cancellationToken).ConfigureAwait(false);
         }
 
+        // ---------- refunds ----------
+
+        /// <summary>
+        /// Refunds a previously captured payment, in full or partially.
+        /// Only captured payments can be refunded — authorized-but-not-captured
+        /// payments cannot.
+        /// </summary>
+        /// <param name="referenceNumber">Fawry's order reference number (from the charge response).</param>
+        /// <param name="refundAmount">Amount to refund. Must not exceed the paid amount.</param>
+        /// <param name="reason">Optional reason, included in the request signature.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        public async Task<RefundResponse> RefundAsync(
+            string referenceNumber, decimal refundAmount, string reason = null,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(referenceNumber))
+                throw new ArgumentException("referenceNumber is required.", nameof(referenceNumber));
+            if (refundAmount <= 0)
+                throw new ArgumentException("refundAmount must be greater than zero.", nameof(refundAmount));
+
+            var body = new Dictionary<string, object>
+            {
+                ["merchantCode"] = _options.MerchantCode,
+                ["referenceNumber"] = referenceNumber,
+                ["refundAmount"] = FawrySignature.FormatAmount(refundAmount),
+                ["signature"] = FawrySignature.ComputeRefundSignature(
+                    _options.MerchantCode, referenceNumber, refundAmount, reason, _options.SecureKey)
+            };
+            if (!string.IsNullOrWhiteSpace(reason))
+                body["reason"] = reason;
+
+            return await PostAsync<RefundResponse>(
+                "ECommerceWeb/Fawry/payments/refund", body, cancellationToken).ConfigureAwait(false);
+        }
+
         // ---------- callbacks ----------
 
         /// <summary>
@@ -237,13 +272,25 @@ namespace Fawry
                     return (T)(object)charge;
                 }
 
-                var op = JsonSerializer.Deserialize<OperationResponse>(responseBody, JsonOptions);
-                if (op != null && !op.IsSuccess)
-                    throw new FawryApiException(op.StatusCode, op.StatusDescription, responseBody);
-                return (T)(object)op;
+                if (typeof(T) == typeof(OperationResponse))
+                {
+                    var op = JsonSerializer.Deserialize<OperationResponse>(responseBody, JsonOptions);
+                    if (op != null && !op.IsSuccess)
+                        throw new FawryApiException(op.StatusCode, op.StatusDescription, responseBody);
+                    return (T)(object)op;
+                }
+
+                var refund = JsonSerializer.Deserialize<RefundResponse>(responseBody, JsonOptions);
+                if (refund != null && !refund.IsSuccess)
+                    throw new FawryApiException(refund.StatusCode, refund.StatusDescription, responseBody);
+                return (T)(object)refund;
             }
         }
 
+        /// <summary>
+        /// Disposes the owned <see cref="HttpClient"/> when the client created it.
+        /// An <see cref="HttpClient"/> you passed in is never disposed.
+        /// </summary>
         public void Dispose()
         {
             if (_disposed) return;

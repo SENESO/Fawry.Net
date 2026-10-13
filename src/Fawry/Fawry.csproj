@@ -7,7 +7,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageId>Fawry.Net</PackageId>
-    <Version>1.0.1</Version>
+    <Version>1.1.0</Version>
     <Authors>Eslam Ashraf</Authors>
     <Description>The complete .NET SDK for Fawry payments — charge (Pay-at-Fawry, cards, mobile wallets), authorize/capture, and callback verification.</Description>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
@@ -17,11 +17,11 @@
     <PackageProjectUrl>https://github.com/SENESO/Fawry.Net</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageReleaseNotes>NuGet polish release: branded package icon, embedded README, and full repository metadata.</PackageReleaseNotes>
+    <PackageReleaseNotes>1.1.0: Refund API (RefundAsync + ComputeRefundSignature + RefundResponse); server-to-server notification V2 callback verification (messageSignature); statusCode now parses as JSON number or string on all responses.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
   </ItemGroup>
 

@@ -12,7 +12,7 @@ The missing .NET SDK for **Fawry** — Egypt's largest payment network.
 
 Create Pay-at-Fawry reference numbers (cash at 300k+ outlets), charge cards
 (immediate or authorize-then-capture), take mobile-wallet payments, capture and
-cancel authorizations, and verify payment callbacks. Request signing follows
+cancel authorizations, issue refunds, and verify payment callbacks. Request signing follows
 Fawry's official documentation exactly — you never hand-roll a signature again.
 
 Targets `netstandard2.0` and `net8.0`. Only `System.Text.Json` (+ DI abstractions).
@@ -102,6 +102,22 @@ var partial = await client.CaptureAsync(auth.MerchantRefNumber, 800.00m); // par
 var cancel = await client.CancelAuthorizationAsync(auth.MerchantRefNumber);
 ```
 
+### Refunds
+
+```csharp
+// Refund a captured payment — full or partial. referenceNumber is Fawry's
+// order reference from the charge response.
+var refund = await client.RefundAsync(charge.ReferenceNumber, 580.55m, "Item not as described");
+
+// partial refund, no reason:
+var partial = await client.RefundAsync(charge.ReferenceNumber, 200.00m);
+
+// FawryApiException on failure, e.g. "9935" = refund exceeds paid amount,
+// "9954" = order not paid, "9938" = order not found.
+```
+
+Signature: `Task<RefundResponse> RefundAsync(string referenceNumber, decimal refundAmount, string reason = null, CancellationToken ct = default)`
+
 ### Callbacks — always verify
 
 ```csharp
@@ -120,6 +136,10 @@ public IActionResult Callback([FromBody] ChargeResponse callback)
 ```
 
 Never trust callback query params alone — verify the signature first.
+
+Server-to-server notifications V2 send the signature as `messageSignature`
+(computed with Fawry's V2 recipe) — the SDK detects it automatically and
+verifies with the V2 recipe; legacy `signature` payloads keep the legacy recipe.
 
 ### ASP.NET Core DI
 
@@ -156,6 +176,17 @@ FawryPay team during account setup.
   ([developer.fawrystaging.com](https://developer.fawrystaging.com), "Authorize and
   Capture Payments" + charge API pages, verified Oct 2026). Card charges use the
   card-inclusive recipe from those docs.
+- Refund signature: `merchantCode + referenceNumber + refundAmount (2dp) + reason (or "") + secureKey`,
+  per Fawry's official "Refund API" page
+  ([refund-issue-api](https://developer.fawrystaging.com/docs/server-apis/refund-issue-api)),
+  verified Oct 2026.
+- Callback verification follows Fawry's "Server To Server Notification V2" page:
+  `fawryRefNumber + merchantRefNumber + paymentAmount (2dp) + orderAmount (2dp) +
+  orderStatus + paymentMethod + paymentRefrenceNumber (or "") + secureKey`
+  (field names as documented, typo included). The previous implementation used a
+  legacy recipe with extra fields — V2 payloads are now verified correctly.
+- Fawry sends `statusCode` as a JSON number on some endpoints and a string on
+  others — the SDK reads both into the string `StatusCode` property.
 - Amounts are sent as two-decimal strings (`"580.55"`), matching Fawry's own
   examples, so the signed value is always exactly what is sent.
 - `ChargeResponse.ShippingFees` is included for callback verification but is
